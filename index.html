@@ -987,7 +987,7 @@ function animate(){
 /* ---- 依形狀產生真實剖面(x=厚度/徑向, y=寬度/沿手指軸向), 皆為 1:1 mm ---- */
 /* 花邊(依實拍照片):扁平帶狀戒圈整圈扭轉約 6 次,扭轉的轉折處形成斜向折線,
    戒圈上下緣隨之波浪起伏,內外圈一起扭轉;另加少量不規則量,保留手工敲打感 */
-const DECO_WAVES = 6, DECO_PHASE = Math.PI/2;
+const DECO_WAVES = 6, DECO_PHASE = 0; /* 相位 0:主石與六芒星(90 度)落在上下波浪的浪峰 */
 /* 主石與六芒星所在的區段(戒圈正上方 90 度附近)保持平整,離開這段後才逐漸過渡到扭轉波浪 */
 function decoFlatBlend(theta){
   let d = Math.abs(((theta - Math.PI/2) % (Math.PI*2) + Math.PI*3) % (Math.PI*2) - Math.PI);
@@ -1000,10 +1000,10 @@ function decoTwist(theta){
   return decoFlatBlend(theta)*0.24*Math.sign(s)*Math.pow(Math.abs(s),0.85);
 }
 function decoWaveOffset(theta){
-  return decoFlatBlend(theta)*0.05*Math.cos(DECO_WAVES*theta + DECO_PHASE);
+  return 0.05*Math.cos(DECO_WAVES*theta + DECO_PHASE);
 }
 function decoWaveWidthOffset(theta){
-  return decoFlatBlend(theta)*0.18*Math.cos(DECO_WAVES*theta + DECO_PHASE);
+  return 0.18*Math.cos(DECO_WAVES*theta + DECO_PHASE);
 }
 /* 花邊戒圈表面上「沿手指軸向位置 y」的點:side=1 外圈、-1 內圈,回傳半徑與實際 z */
 function decoSurface(theta, y, side, halfThick, R){
@@ -1544,7 +1544,11 @@ function _rebuildRingNow(){
     /* 星芒凸出量(相對於「該點當下戒圈表面」,已含波浪起伏)務必小於主石的凸出量,
        讓主石清楚浮現在星芒正中央之上,不會反過來被星芒擋住 */
     const starPop = Math.max(0.05, Math.min(0.1, starGemR*0.5 - 0.06));
-    const waveFn = (viewShape==='deco') ? ((th,y)=>decoSurface(th, y, 1, halfThick, MAIN_RADIUS_MM)) : null;
+    /* 六芒星區塊只取消扭轉、表面平整,上下波浪照常延續;星芒整顆依中心點的波浪高度平移,
+       不逐點跟著波浪彎曲,避免星芒被拉歪;半徑方向仍逐點貼合表面 */
+    const waveFn = (viewShape==='deco')
+      ? ((th,y)=>{ const sf = decoSurface(th, y, 1, halfThick, MAIN_RADIUS_MM); sf.z = y + decoWaveWidthOffset(Math.PI/2); return sf; })
+      : null;
     const starGeo = curvedStarGeometry(starOuter, starLong, MAIN_RADIUS_MM, halfThick, starPop, waveFn);
     /* 銀白色+金屬感:改回會受場景燈光影響的 MeshStandardMaterial,
        用偏冷、偏白的中性銀色(不帶金黃色調)搭配高金屬度、低粗糙度,
